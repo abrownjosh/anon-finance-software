@@ -1,0 +1,186 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+data_file_path = '###################################'
+
+
+# In[2]:
+
+
+import numpy as np
+import pandas as pd
+import keyboard
+import time
+import os
+import pyautogui
+import datetime
+
+def launch_excel(file_path):
+    if os.path.exists(file_path):
+        os.system('start "" "' + file_path + '"')
+    else:
+        print("File not found.")
+
+def prev_date(date):
+    # Check if the input is a weekend (Saturday or Sunday)
+    if date.weekday() == 0:  # Monday
+        previous_weekday = date - datetime.timedelta(days=3)
+    elif date.weekday() == 6:  # Sunday
+        previous_weekday = date - datetime.timedelta(days=2)
+    else:
+        previous_weekday = date - datetime.timedelta(days=1)
+    return previous_weekday
+
+def curr_date():
+    today = datetime.date.today()
+    if today.weekday() >= 5:  # Saturday (5) or Sunday (6)
+        return prev_date(today)
+    else:
+        return today
+
+def simulate_key_presses():
+    # Wait for the Excel window to open
+    time.sleep(5)  # Adjust the delay according to your system's speed
+
+    # Simulate key presses
+    pyautogui.press('alt')
+    pyautogui.press('y')
+    pyautogui.press('1')
+    pyautogui.press('y')
+    pyautogui.press('2')
+    pyautogui.hotkey('ctrl', 's')
+
+
+# In[3]:
+
+
+# Making Empty Enfusion-Ready Sheet
+curr = curr_date().strftime("%m%d%y")
+path_name = data_file_path + 'XXXX' + curr + '.xlsx'
+
+data = {'A': ['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX']}
+df = pd.DataFrame(data)
+df.to_excel(path_name, index=False, header=False)
+
+# Loading the Enfusion Data Into the Sheet/Dataframe
+launch_excel(path_name)
+time.sleep(3)
+simulate_key_presses()
+time.sleep(8)
+df = pd.read_excel(path_name, skiprows=10)
+
+# Formatting Enfusion List
+df.drop_duplicates(inplace=True, subset=['XXXXXXXXXXX'])
+df.dropna(inplace=True, subset=['XXXXXXXXXXX'])
+df.reset_index(inplace=True, drop=True)
+df['XXXXXXXXXXX'] = df['XXXXXXXXXXX'].str.replace(' Equity', '')
+
+# Formatting XXXXXXXXXXX Lists
+AB_df = pd.read_excel(data_file_path + 'XXXXXXXXXXX', skiprows=3)
+CD_df = pd.read_excel(data_file_path + 'XXXXXXXXXXX', skiprows=3)
+ABCD = pd.concat([AB_df, CD_df], axis=0)
+ABCD = ABCD[['Security ID', 'Bloomberg ID', 'ISIN', 'SEDOL1', 'Security Name']]
+ABCD.drop_duplicates(inplace=True, subset=['Security ID'])
+ABCD.dropna(inplace=True, subset=['Security ID'])
+ABCD = ABCD.drop(columns='Security ID')
+ABCD['Bloomberg ID'] = ABCD['Bloomberg ID'].str.replace(' EQUITY', '')
+ABCD.rename(columns={"Bloomberg ID": "BB Yellow Key", "Security Name": "Description", "SEDOL1": "SEDOL"}, inplace=True)
+
+# Formatting "XXXXXXXXXXXXX" List
+wl = pd.read_excel(data_file_path + 'XXXXXXXXXXXXX', skiprows=3)
+wl = wl[['BB TICKER', 'ISIN', 'SEDOL', 'NAME']]
+wl.drop_duplicates(inplace=True, subset=['BB TICKER'])
+wl.dropna(inplace=True, subset=['BB TICKER'])
+wl['BB TICKER'] = wl['BB TICKER'].str.replace(' EQUITY', '')
+wl['BB TICKER'] = wl['BB TICKER'].str.replace(' Equity', '')
+wl.rename(columns={"BB TICKER": "BB Yellow Key", "NAME": "Description"}, inplace=True)
+
+# Combining and doing collective formatting
+df = pd.concat([df, ABCD, wl], axis=0)
+df.reset_index(inplace=True, drop=True)
+df.rename(columns={"BB Yellow Key": "Symbol", "Description": "CompanyName"}, inplace=True)
+df['StartDate'] = np.repeat(datetime.date.today().strftime("%m/%d/%Y"), len(df))
+df['ListName'] = np.repeat("Restricted List", len(df))
+df['Groups'] = np.repeat("All Employees", len(df))
+df['XXXXXXXXXXXXX'] = np.repeat("XXXXXXXXXXXXX", len(df))
+df['SecurityDescription'] = df['CompanyName'] + ' Stocks'
+df['SecurityType'] = np.repeat(34, len(df))
+df['CreateIfNotFound'] = np.repeat(1, len(df))
+df.reset_index(inplace=True, drop=True)
+df = df.reindex(columns=['Symbol', 'ISIN', 'SEDOL', 'StartDate', 'ListName', 'Groups', 'ListAdministrator', 'CompanyName',
+                    'SecurityDescription', 'SecurityType', 'CreateIfNotFound'])
+df = df.style.set_properties(**{'text-align': 'left'})
+
+# Exporting Master List
+new_excel = data_file_path + 'XXXXXXXXX' + curr + ' XXXXXXXXXXXXX.xlsx'
+df.to_excel(new_excel, index=False)
+df = df.data
+
+# Comparison
+
+# Loading DFs
+today_df = df.copy()
+add_df = today_df.copy()
+yest_df = None
+
+prev = prev_date(curr_date())
+for i in range(10):
+    try:
+        yest_df = pd.read_excel(data_file_path + 'XXXXXXXX' + prev.strftime("%m%d%y") + 'XXXXXXXXXX.xlsx')
+        break
+    except FileNotFoundError:
+        prev = prev_date(prev)
+
+if yest_df is None:
+    yest_df = pd.DataFrame(columns = df.columns)
+    yest_df.fillna('', inplace=True)
+
+drop_df = yest_df.copy()
+
+# Making Add List
+for index, row in today_df.iterrows():
+    if row['ISIN'] in yest_df['ISIN'].tolist():
+        add_df.drop(index, inplace=True)
+
+# Making Drop List
+for index, row in yest_df.iterrows():
+    if row['ISIN'] in today_df['ISIN'].tolist():
+        drop_df.drop(index, inplace=True)
+
+add_df.to_csv(data_file_path + 'XXXXXXXXXXXXX.txt', sep=',', index=False, header=False)
+drop_df.to_csv(data_file_path + 'XXXXXXXXXXXXX.txt', sep=',', index=False, header=False)
+
+
+# In[6]:
+
+
+df
+
+
+# In[4]:
+
+
+AB_df = pd.read_excel(data_file_path + 'XXXXXXXXXXXXX.xlsx', skiprows=3)
+CD_df = pd.read_excel(data_file_path + 'XXXXXXXXXXXXX.xlsx', skiprows=3)
+ABCD = pd.concat([AB_df, CD_df], axis=0)
+ABCD = ABCD[['Security ID', 'Bloomberg ID', 'ISIN', 'SEDOL1', 'Security Name']]
+ABCD.drop_duplicates(inplace=True, subset=['Security ID'])
+ABCD.dropna(inplace=True, subset=['Security ID'])
+ABCD = ABCD.drop(columns='Security ID')
+ABCD['Bloomberg ID'] = ABCD['Bloomberg ID'].str.replace(' EQUITY', '')
+ABCD.rename(columns={"Bloomberg ID": "BB Yellow Key", "Security Name": "Description", "SEDOL1": "SEDOL"}, inplace=True)
+
+
+# In[5]:
+
+
+wl = pd.read_excel(data_file_path + 'XXXXXXXXX.xlsx', skiprows=3)
+wl = wl[['BB TICKER', 'ISIN', 'SEDOL', 'NAME']]
+wl.drop_duplicates(inplace=True, subset=['BB TICKER'])
+wl.dropna(inplace=True, subset=['BB TICKER'])
+wl['BB TICKER'] = wl['BB TICKER'].str.replace(' EQUITY', '')
+wl['BB TICKER'] = wl['BB TICKER'].str.replace(' Equity', '')
+wl.rename(columns={"BB TICKER": "BB Yellow Key", "NAME": "Description"}, inplace=True)
